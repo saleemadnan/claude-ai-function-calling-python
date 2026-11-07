@@ -16,8 +16,10 @@ Activate the virtual env with:
 - On macOS or Linux, source claude-env/bin/activate
 - On Windows, claude-env\Scripts\activate
 
-Install package:
-pip install anthropic
+Install package (the scripts need version 0.120.0 or later; this also upgrades an older copy in an existing `claude-env`):
+```
+pip install "anthropic>=0.120.0"
+```
 
 Export API Key:
 - macoS/Linux: export ANTHROPIC_API_KEY='your-api-key-here'
@@ -31,12 +33,16 @@ python3 basic.py
 ## Run Claude AI + SerpApi
 Install SerpApi package
 ```
-pip isntall serpapi
+pip install serpapi
 ```
 
 Export the API Key (make sure to register at serpapi.com and grab your API key from the dashboard):
 ```
 export SERPAPI_API_KEY=YOUR_REAL_API_KEY
+```
+On Windows:
+```
+setx SERPAPI_API_KEY "YOUR_REAL_API_KEY"
 ```
 
 Run the sample file
