@@ -1,5 +1,8 @@
 # About
-Running Claude AI with external API using function calling. 
+Running Claude AI with external API using function calling.
+
+The examples use `claude-opus-5-5` and the standard tool-use loop: Claude asks for a tool, the script runs it and sends the
+result back as a `tool_result`, and the loop repeats until Claude gives its final answer.
 
 Reference:  
 - Step-by-step tutorial: [Function calling using Claude AI Blog post](https://serpapi.com/blog/connecting-claude-ai-to-the-internet-using-function-calling)
@@ -16,8 +19,10 @@ Activate the virtual env with:
 - On macOS or Linux, source claude-env/bin/activate
 - On Windows, claude-env\Scripts\activate
 
-Install package:
-pip install anthropic
+Install package (a recent version is required):
+```
+pip install -U anthropic
+```
 
 Export API Key:
 - macoS/Linux: export ANTHROPIC_API_KEY='your-api-key-here'
@@ -31,7 +36,7 @@ python3 basic.py
 ## Run Claude AI + SerpApi
 Install SerpApi package
 ```
-pip isntall serpapi
+pip install serpapi
 ```
 
 Export the API Key (make sure to register at serpapi.com and grab your API key from the dashboard):

@@ -1,8 +1,12 @@
-import anthropic
 import time
+
+import anthropic
+
+MODEL = "claude-opus-5-5"
 
 # measure time
 start_time = time.time()
+
 
 def score_checker(score):
     if score > 0.5:
@@ -10,63 +14,66 @@ def score_checker(score):
     else:
         return "Fail"
 
+
+TOOLS = [
+    {
+        "name": "score_checker",
+        "description": "Takes the exam score (a number between 0 and 1) and returns whether it is a Pass or a Fail.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"score": {"type": "number"}},
+            "required": ["score"],
+        },
+    }
+]
+
+
+def run_tool(name, tool_input):
+    if name == "score_checker":
+        return score_checker(float(tool_input["score"]))
+    raise ValueError(f"Unknown tool: {name}")
+
+
 client = anthropic.Anthropic()
-message = client.messages.create(
-    model="claude-3-5-sonnet-20240620",
-    max_tokens=1000,
-    tools=[
-        {
-            "name": "score_checker",
-            "description": "A function that takes the score provided and return the results.",
-            "input_schema": {
-                "type": "object",
-                "properties": {
-                    "score": {
-                        "type": "string"
-                    }
-                },
-                "required": ["score"]
-            }
-        }
-    ],
-    messages=[
-        {
-            "role": "user",
-            "content": "I got the result. My score is 0.4 last night"
-        }
-    ]
-)
+messages = [{"role": "user", "content": "I got the result. My score is 0.4 last night"}]
 
-if message.stop_reason != "tool_use":
-    print("End... No tool used")
-    exit()
+# Keep going until Claude stops asking for tools
+while True:
+    response = client.beta.messages.create(
+        model=MODEL,
+        max_tokens=16000,
+        tools=TOOLS,
+        messages=messages,
+        # If the model declines a request, let the API retry it on a fallback model.
+        betas=["server-side-fallback-2026-07-01"],
+        fallbacks="default",
+    )
 
-# Only continue when tools needed
-dataFromCustomFunction = None
-if message.stop_reason == "tool_use":
-    tool_params = message.content[1].input
-    tool_name = message.content[1].name
-    
-    # call available tool function
-    if tool_name == "score_checker":
-        result = score_checker(float(tool_params["score"]))
-        dataFromCustomFunction = result
-        print(result)
+    if response.stop_reason != "tool_use":
+        break
 
+    # Send the assistant turn back unchanged, then answer every tool call in ONE user message
+    messages.append({"role": "assistant", "content": response.content})
+    tool_results = []
+    for block in response.content:
+        if block.type != "tool_use":
+            continue
+        try:
+            result = run_tool(block.name, block.input)
+            print(f"{block.name}({block.input}) -> {result}")
+            tool_results.append({"type": "tool_result", "tool_use_id": block.id, "content": str(result)})
+        except Exception as e:
+            tool_results.append(
+                {"type": "tool_result", "tool_use_id": block.id, "content": str(e), "is_error": True}
+            )
+    messages.append({"role": "user", "content": tool_results})
 
-# Request a chat response from the assistant
-response = client.messages.create(
-    model="claude-3-5-sonnet-20240620",
-    max_tokens=1000,
-    messages=[
-        {
-            "role": "user",
-            "content": "Answer to the customer. The customer exam status is " + dataFromCustomFunction
-        }
-    ]
-)
-
-print(response.content[0].text)
+if response.stop_reason == "refusal":
+    print("The model declined to answer this request.")
+else:
+    for block in response.content:
+        if block.type == "text":
+            print(block.text)
 
 # measure time
 print("--- %s seconds ---" % (time.time() - start_time))
